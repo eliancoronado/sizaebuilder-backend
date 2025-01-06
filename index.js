@@ -114,7 +114,7 @@ function renderElement(element) {
     name === "Container"
       ? "div"
       : name === "Text"
-      ? "p"
+      ? "h3"
       : name === "Icon"
       ? "i"
       : name === "Image"
