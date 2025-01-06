@@ -91,10 +91,20 @@ function renderElement(element) {
     styles = {},
     iconClass = "",
     placeholder = "",
+    type = "",
   } = element;
 
   // Asegurarse de que el elemento `name` sea válido
-  const validTags = ["Container", "Text", "Input", "Button", "Image", "Icon"];
+  const validTags = [
+    "Container",
+    "Text",
+    "Input",
+    "Button",
+    "Image",
+    "Icon",
+    "Select",
+    "Option",
+  ];
   if (!validTags.includes(name)) {
     throw new Error(`Invalid tag name: ${name}`);
   }
@@ -125,12 +135,13 @@ function renderElement(element) {
     name === "Icon" && iconClass ? `class="${iconClass}" ` : ""; // Añadir clase para íconos
   const placeholderAtr =
     name === "Input" && placeholder ? `placeholder="${placeholder}" ` : ""; // Añadir clase para íconos
+  const typeInputAtr = name === "Input" && type ? `type="${type}"` : "";
 
   // Elementos auto-cerrados
   const selfClosingTags = ["input", "img", "br", "hr", "meta", "link"];
 
   if (selfClosingTags.includes(tag)) {
-    return `<${tag} ${idAttribute}style="${styleString}" ${placeholderAtr} />`;
+    return `<${tag} ${idAttribute}${typeInputAtr}style="${styleString}" ${placeholderAtr} />`;
   }
 
   // Renderizar los hijos recursivamente
@@ -410,13 +421,14 @@ app.delete("/delete-project/:id", async (req, res) => {
       console.log(`Carpeta dist/${projectId} no encontrada`);
     }
 
-    res.status(200).json({ message: "Proyecto, imagen y carpeta eliminados con éxito" });
+    res
+      .status(200)
+      .json({ message: "Proyecto, imagen y carpeta eliminados con éxito" });
   } catch (error) {
     console.error("Error al eliminar el proyecto:", error);
     res.status(500).json({ message: "Error al eliminar el proyecto" });
   }
 });
-
 
 app.delete("/delete-projects", async (req, res) => {
   try {
