@@ -45,6 +45,11 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("selectedPageChanged", { projectId, selectedPage });
   });
 
+  socket.on('draggingElementStarted', ({ id, draggingElement }) => {
+    // Emitir el evento a todos los demás clientes
+    socket.broadcast.emit('draggingElementUpdated', { id, draggingElement });
+  });
+
   // Escucha la desconexión
   socket.on("disconnect", () => {
     console.log("Cliente desconectado:", socket.id);
