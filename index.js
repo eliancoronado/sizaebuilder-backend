@@ -24,6 +24,38 @@ app.use(bodyParser.json({ limit: "10mb" }));
 app.use(cors());
 app.use("/images", express.static(path.join(__dirname, "public")));
 
+// Middleware para servir archivos estáticos según el ID
+app.use("/dist/:id", (req, res, next) => {
+  const { id } = req.params;
+  const projectPath = path.join(__dirname, "dist", id);
+
+  console.log(`Buscando en: ${projectPath}`); // Log para verificar la ruta
+
+  if (fs.existsSync(projectPath)) {
+    console.log("Carpeta encontrada");
+    express.static(projectPath)(req, res, next);
+  } else {
+    console.log("Carpeta no encontrada");
+    res.status(404).send("Proyecto no encontrado");
+  }
+});
+
+// Ruta específica para enviar el archivo index.html
+app.get("/dist/:id/index.html", (req, res) => {
+  const { id } = req.params;
+  const indexPath = path.join(__dirname, "dist", id, "index.html");
+
+  console.log(`Buscando archivo: ${indexPath}`); // Log para verificar la ruta del archivo
+
+  if (fs.existsSync(indexPath)) {
+    console.log("Archivo encontrado");
+    res.sendFile(indexPath);
+  } else {
+    console.log("Archivo no encontrado");
+    res.status(404).send("Archivo index.html no encontrado");
+  }
+});
+
 app.use(express.urlencoded({ extended: true })); // Para formularios codificados en URL
 
 const server = http.createServer(app);
@@ -45,9 +77,9 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("selectedPageChanged", { projectId, selectedPage });
   });
 
-  socket.on('draggingElementStarted', ({ id, draggingElement }) => {
+  socket.on("draggingElementStarted", ({ id, draggingElement }) => {
     // Emitir el evento a todos los demás clientes
-    socket.broadcast.emit('draggingElementUpdated', { id, draggingElement });
+    socket.broadcast.emit("draggingElementUpdated", { id, draggingElement });
   });
 
   // Escucha la desconexión
