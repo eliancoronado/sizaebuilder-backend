@@ -9,6 +9,7 @@ const Project = require("./Models/Project");
 const path = require("path");
 const bodyParser = require("body-parser");
 const { Server } = require("socket.io");
+const multer = require("multer");
 const archiver = require("archiver"); // Para crear el archivo ZIP
 
 mongoose
@@ -20,9 +21,38 @@ mongoose
 const app = express();
 
 app.use(express.json());
-app.use(bodyParser.json({ limit: "10mb" }));
-app.use(cors());
+//app.use(bodyParser.json({ limit: "10mb" }));
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use("/images", express.static(path.join(__dirname, "public")));
+app.use("/images", express.static(path.join(__dirname, "dist")));
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
+
+// Crear un almacenamiento con Multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Crear el directorio del usuario si no existe
+    const uploadDir = path.join(__dirname, "dist", req.params.prid);
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir); // Guardar archivos en el directorio del usuario
+  },
+  filename: (req, file, cb) => {
+    // Asignar un nombre único a cada archivo
+    const fileExtension = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}${fileExtension}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage, limits: { fileSize: 200 * 1024 * 1024 } });
 
 // Middleware para servir archivos estáticos según el ID
 app.use("/dist/:id", (req, res, next) => {
@@ -129,6 +159,7 @@ function renderElement(element) {
     iconClass = "",
     placeholder = "",
     type = "",
+    src = "",
   } = element;
 
   // Asegurarse de que el elemento `name` sea válido
@@ -173,12 +204,13 @@ function renderElement(element) {
   const placeholderAtr =
     name === "Input" && placeholder ? `placeholder="${placeholder}" ` : ""; // Añadir clase para íconos
   const typeInputAtr = name === "Input" && type ? `type="${type}"` : "";
+  const srcAtr = name === "Image" && src ? `src="${src.split("/").pop()}"` : "";
 
   // Elementos auto-cerrados
   const selfClosingTags = ["input", "img", "br", "hr", "meta", "link"];
 
   if (selfClosingTags.includes(tag)) {
-    return `<${tag} ${idAttribute}${typeInputAtr}style="${styleString}" ${placeholderAtr} />`;
+    return `<${tag} ${idAttribute}${typeInputAtr}${srcAtr}style="${styleString}" ${placeholderAtr} />`;
   }
 
   // Renderizar los hijos recursivamente
@@ -513,16 +545,34 @@ app.post("/save-image", (req, res) => {
   });
 });
 
-const uploadDir = path.join(__dirname, "upload");
+// Endpoint para subir imágenes con multer
+app.post("/upload/:prid", upload.single("image"), (req, res) => {
+  if (!req.file)
+    return res.status(400).json({ message: "No se subió ninguna imagen" });
 
-// Crear la carpeta "upload" si no existe
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+  res.status(200).json({
+    message: "Imagen subida con éxito",
+    filePath: `/dist/${req.params.prid}/${req.file.filename}`,
+  });
+});
 
-app.use("/upload", express.static(uploadDir));
+// Ruta para obtener las imágenes subidas
+app.get("/imagesuploaded/:prid", (req, res) => {
+  const imagesDir = path.join(__dirname, "dist", req.params.prid);
+  fs.readdir(imagesDir, (err, files) => {
+    if (err) {
+      return res.status(500).send("Error al leer el directorio de imágenes.");
+    }
+    const imagePaths = files.map((file) => `/dist/${req.params.prid}/${file}`);
+    res.json({ images: imagePaths }); // Devolver las rutas de todas las imágenes
+  });
+});
 
-app.post("/upload", (req, res) => {
+// Servir imágenes
+app.use("/dist", express.static(path.join(__dirname, "dist")));
+
+/*
+app.post("/upload/:prid", (req, res) => {
   const base64Image = req.body.image; // Se espera que la imagen venga en formato base64
   const extension = req.body.extension || "png"; // Extensión predeterminada
   const fileName = `${Date.now()}.${extension}`;
@@ -542,6 +592,7 @@ app.post("/upload", (req, res) => {
     });
   });
 });
+*/
 
 app.put("/update-project/:id", async (req, res) => {
   const { id } = req.params;
@@ -590,6 +641,7 @@ app.put("/addNewPage/:id", async (req, res) => {
   }
 });
 
+/*
 app.get("/imagesuploaded", (req, res) => {
   const uploadDir = path.join(__dirname, "upload");
   fs.readdir(uploadDir, (err, files) => {
@@ -603,6 +655,7 @@ app.get("/imagesuploaded", (req, res) => {
     res.status(200).json({ images });
   });
 });
+*/
 
 server.listen(4000, () => {
   console.log("Servidor escuchando en http://localhost:4000");
