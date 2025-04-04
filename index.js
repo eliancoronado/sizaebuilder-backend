@@ -21,7 +21,7 @@ mongoose
 const app = express();
 
 app.use(express.json());
-//app.use(bodyParser.json({ limit: "10mb" }));
+//https://sizae-frontend.netlify.app"
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 app.use(cors({ origin: "https://sizae-frontend.netlify.app", credentials: true }));
@@ -159,7 +159,9 @@ function renderElement(element) {
     iconClass = "",
     placeholder = "",
     type = "",
+    value = "",
     src = "",
+    href = "",
   } = element;
 
   // Asegurarse de que el elemento `name` sea válido
@@ -172,6 +174,10 @@ function renderElement(element) {
     "Icon",
     "Select",
     "Option",
+    "Link",
+    "O-List",
+    "U-List",
+    "List-Item",
   ];
   if (!validTags.includes(name)) {
     throw new Error(`Invalid tag name: ${name}`);
@@ -187,6 +193,14 @@ function renderElement(element) {
       ? "i"
       : name === "Image"
       ? "img"
+      : name === "Link"
+      ? "a"
+      : name === "O-List"
+      ? "ol"
+      : name === "U-List"
+      ? "ul"
+      : name === "List-Item"
+      ? "li"
       : name.toLowerCase();
 
   // Convertir estilos en un string de CSS
@@ -199,11 +213,12 @@ function renderElement(element) {
 
   // Agregar el id al atributo 'id' y la clase 'iconClass' si el elemento es un ícono
   const idAttribute = id ? `id="${id}" ` : ""; // Solo añade el atributo id si está presente
-  const iconClassName =
-    name === "Icon" && iconClass ? `class="${iconClass}" ` : ""; // Añadir clase para íconos
+  const iconClassName = iconClass ? `class="${iconClass}"` : "";
   const placeholderAtr =
     name === "Input" && placeholder ? `placeholder="${placeholder}" ` : ""; // Añadir clase para íconos
   const typeInputAtr = name === "Input" && type ? `type="${type}"` : "";
+  const valueOptAtr = name === "Option" && value ? `value="${value}"` : "";
+  const hrefAtr = name === "Link" && href ? `href="${href}"` : "";
   const srcAtr = name === "Image" && src ? `src="${src.split("/").pop()}"` : "";
 
   // Elementos auto-cerrados
@@ -217,7 +232,7 @@ function renderElement(element) {
   const childrenHTML = children.map(renderElement).join("");
 
   // Retornar el HTML del elemento con id y clases
-  return `<${tag} ${idAttribute}${iconClassName}style="${styleString}">${text}${childrenHTML}</${tag}>`;
+  return `<${tag} ${idAttribute}${iconClassName}${valueOptAtr}${hrefAtr}style="${styleString}">${text}${childrenHTML}</${tag}>`;
 }
 
 // Función para generar el HTML completo
@@ -236,9 +251,26 @@ function generateHTML(droppedElement) {
   }
 }
 
+const generateCSS = (gs) => {
+  return gs.map((el) => {
+    const styles = el.styles;
+    const styleEntries = Object.entries(styles);
+
+    // Filtramos estilos vacíos para evitar generar reglas CSS innecesarias
+    const validStyles = styleEntries.filter(([key, value]) => value !== "");
+
+    // Generar la clase CSS con los estilos
+    const className = `.${el.name}`;
+    const cssRules = validStyles.map(([key, value]) => `${key}: ${value};`).join(" ");
+
+    return `${className} { ${cssRules} }`;
+  }).join("\n");
+};
+
+
 // Ruta para manejar la vista previa y guardar el archivo HTML
 app.post("/generate", (req, res) => {
-  const { droppedElement, selectedPage, jscode, id } = req.body;
+  const { droppedElement, selectedPage, jscode, gs, id } = req.body;
 
   // Validar los campos requeridos
   if (!droppedElement || !selectedPage || !id) {
@@ -249,6 +281,8 @@ app.post("/generate", (req, res) => {
 
   // Generar el contenido HTML
   const bodyContent = generateHTML(droppedElement);
+  const cssContent = generateCSS(gs);
+
   const fullHTML = `
   <!DOCTYPE html>
   <html lang="en">
@@ -268,7 +302,9 @@ app.post("/generate", (req, res) => {
         width: 100%;
         height: 100vh;
         position: relative;
+        scroll-behavior: smooth;
         }
+        ${cssContent}
       </style>
   </head>
   <body>

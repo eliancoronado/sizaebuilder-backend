@@ -19,6 +19,7 @@ const projectSchema = new mongoose.Schema({
       elements: { type: [Object], default: [] }, // Debe ser un arreglo de objetos
       code: { type: String, default: "" }, // Código JavaScript generado
       state: { type: Object, default: {} }, // JSON con el estado de los bloques
+      stylesGlobal: { type: Object, default: {} }, // JSON con los estilos de los bloques
     }
   ],
 });
